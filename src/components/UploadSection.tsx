@@ -1,10 +1,13 @@
 import { Upload, Link, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
 
 const UploadSection = () => {
   const [dragActive, setDragActive] = useState(false);
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -16,11 +19,45 @@ const UploadSection = () => {
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    // Handle file upload logic here
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      await uploadFile(file);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await uploadFile(file);
+    }
+  };
+
+  const uploadFile = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append("image_file", file);
+
+      const response = await fetch("http://localhost:8000/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("Analysis result:", result);
+
+      // ✅ Navigate to /results/:id with result.id
+      navigate(`/results/${result.id}`);
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
   };
 
   return (
@@ -35,9 +72,9 @@ const UploadSection = () => {
           </p>
         </div>
 
-        <Card 
+        <Card
           className={`p-8 border-2 border-dashed transition-smooth shadow-card hover:shadow-hover ${
-            dragActive ? 'border-primary bg-accent/20' : 'border-border'
+            dragActive ? "border-primary bg-accent/20" : "border-border"
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -50,7 +87,7 @@ const UploadSection = () => {
                 <Upload className="w-8 h-8 text-accent-strong" />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <p className="text-lg font-medium text-foreground">
                 Drop files here or click to upload
@@ -61,11 +98,26 @@ const UploadSection = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="bg-gradient-primary hover:shadow-glow transition-smooth">
+              <input
+                type="file"
+                accept="image/*,video/*"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={handleFileSelect}
+              />
+
+              <Button
+                className="bg-gradient-primary hover:shadow-glow transition-smooth"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Image className="w-4 h-4 mr-2" />
                 Choose File
               </Button>
-              <Button variant="outline" className="border-accent-strong text-accent-strong hover:bg-accent">
+
+              <Button
+                variant="outline"
+                className="border-accent-strong text-accent-strong hover:bg-accent"
+              >
                 <Link className="w-4 h-4 mr-2" />
                 Paste Link
               </Button>
